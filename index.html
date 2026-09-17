@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where's the Sun on Kaua'i?</title>
+<meta name="description" content="Live National Weather Service conditions for five towns on Kaua'i, and where the sun is most likely right now.">
+<link rel="preconnect" href="https://api.weather.gov">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FBF8F1;
+    --text: #1E4630;
+    --text-desc: #24503A;
+    --text-secondary: #4C6A5A;
+    --accent: #A84A1C;       /* text-safe coral (>=4.5:1) */
+    --accent-bright: #DD6A3A; /* decorative-only coral */
+    --wave: #3E8FA6;
+    --cloud: #2F6B52;
+    --rain: #4A93A6;
+    --rain-heavy: #3E8FA6;
+    --divider: rgba(30,70,48,.12);
+    --divider-strong: rgba(30,70,48,.16);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  a { color: var(--accent); }
+  .serif { font-family: "Fraunces", Georgia, serif; }
+  .tracked { letter-spacing: .08em; text-transform: uppercase; font-size: 12px; color: var(--text-secondary); }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 32px 24px 64px; }
+  header { display: flex; align-items: center; gap: 10px; padding-bottom: 18px; }
+  h1 { margin: 0; font-size: 21px; font-weight: 600; }
+  .wave { display: block; }
+  .date-row { padding-top: 14px; }
+  section.hero { padding-top: 26px; }
+  .hero-label { color: var(--accent); font-weight: 600; }
+  .hero-place-row { display: flex; align-items: center; gap: 16px; padding-top: 6px; }
+  h2 { margin: 0; font-size: 56px; font-weight: 600; line-height: 1; letter-spacing: .01em; }
+  .hero-desc { margin: 14px 0 8px; font-size: 26px; font-weight: 400; line-height: 1.3; color: var(--text-desc); }
+  .hero-note { font-size: 15px; color: var(--text-secondary); }
+  .tabs { display: flex; padding-top: 24px; border-bottom: 1px solid var(--divider-strong); }
+  .tab {
+    background: none; border: none; border-bottom: 2px solid transparent;
+    padding: 14px 2px; min-height: 44px; margin-right: 24px;
+    font-size: 13px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-secondary); cursor: pointer; font-family: inherit;
+  }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  .tab:focus-visible, .link-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+  h3 { margin: 32px 0 4px; font-size: 25px; font-weight: 600; }
+  ul.rows { list-style: none; margin: 0; padding: 0; }
+  .row { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--divider); }
+  .row .name { width: 84px; font-size: 16px; font-weight: 600; flex-shrink: 0; }
+  .row .cond { flex-grow: 1; font-size: 14px; color: var(--text-secondary); }
+  .row .temp { font-size: 22px; font-weight: 600; }
+  .row svg { flex-shrink: 0; }
+  footer { padding-top: 16px; }
+  .footnote { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
+  .link-btn { background: none; border: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; font-size: 13px; }
+  #why-detail { padding-top: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <svg width="26" height="26" viewBox="0 0 28 28" fill="none" stroke="var(--accent-bright)" stroke-width="1.6" stroke-linecap="round" aria-hidden="true" focusable="false">
+      <circle cx="14" cy="14" r="6"/>
+      <line x1="14" y1="1" x2="14" y2="4"/><line x1="14" y1="24" x2="14" y2="27"/>
+      <line x1="1" y1="14" x2="4" y2="14"/><line x1="24" y1="14" x2="27" y2="14"/>
+      <line x1="5" y1="5" x2="7" y2="7"/><line x1="21" y1="21" x2="23" y2="23"/>
+      <line x1="5" y1="23" x2="7" y2="21"/><line x1="21" y1="7" x2="23" y2="5"/>
+    </svg>
+    <h1 class="serif">Where's the Sun on Kaua'i?</h1>
+  </header>
+
+  <svg class="wave" width="100%" height="10" viewBox="0 0 160 10" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+    <path d="M0 5 Q10 0 20 5 T40 5 T60 5 T80 5 T100 5 T120 5 T140 5 T160 5" stroke="var(--wave)" stroke-width="1.2" fill="none" opacity="0.4"/>
+  </svg>
+
+  <div class="tracked date-row" id="now-label">&nbsp;</div>
+
+  <main>
+    <section class="hero" aria-label="Current best chance of sun">
+      <div class="tracked hero-label" id="hero-label"></div>
+      <div class="hero-place-row">
+        <h2 class="serif" id="hero-place"></h2>
+        <span id="hero-icon"></span>
+      </div>
+      <p class="serif hero-desc" id="hero-desc"></p>
+      <div class="hero-note" id="hero-note"></div>
+    </section>
+
+    <div class="tabs" role="group" aria-label="Forecast period">
+      <button class="tab" data-tab="now" aria-pressed="false">Now</button>
+      <button class="tab" data-tab="afternoon" aria-pressed="true">This Afternoon</button>
+      <button class="tab" data-tab="tomorrow" aria-pressed="false">Tomorrow</button>
+    </div>
+
+    <section aria-labelledby="elsewhere-heading">
+      <h3 id="elsewhere-heading" class="serif">Elsewhere on Kaua'i</h3>
+      <ul class="rows" id="town-rows"></ul>
+    </section>
+  </main>
+
+  <footer>
+    <svg class="wave" width="100%" height="10" viewBox="0 0 160 10" preserveAspectRatio="none" style="margin-top:30px;" aria-hidden="true" focusable="false">
+      <path d="M0 5 Q10 0 20 5 T40 5 T60 5 T80 5 T100 5 T120 5 T140 5 T160 5" stroke="var(--wave)" stroke-width="1.2" fill="none" opacity="0.35"/>
+    </svg>
+    <div class="footnote">
+      Forecasts come from the U.S. National Weather Service, not a live sky camera.
+      <button class="link-btn" id="why-btn" aria-expanded="false" aria-controls="why-detail">why?</button>
+      <div id="why-detail" style="display:none;">This page pulls the NWS forecast for five points around the island from api.weather.gov. That forecast grid is about 2.5&nbsp;km across and is refreshed roughly hourly, so a shower passing over your beach right now may not show up here yet &mdash; Kaua'i's microclimates shift faster than any island-wide model tracks them.</div>
+      <div id="data-status" role="status" aria-live="polite"></div>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------------------------------------------------------------------
+     Data source: National Weather Service (api.weather.gov), no API key.
+     CORS is open (access-control-allow-origin: *), so the browser can call
+     it directly. Gzipped, each town's hourly forecast is ~4.5 KB, so five
+     towns cost roughly 50 KB on the wire — cheap enough to stay a purely
+     static page with no server component.
+     --------------------------------------------------------------------- */
+
+  var API = 'https://api.weather.gov';
+
+  // Hawaii is UTC-10 year round and never observes DST, so a fixed offset
+  // is safe and lets us do wall-clock math without a tz library.
+  var HST_OFFSET_MS = 10 * 3600 * 1000;
+
+  // gridId/gridX,gridY resolved from the /points endpoint and baked in, so a
+  // normal page load costs 2 requests per town instead of 3. If NWS re-grids
+  // and a baked URL 404s, fetchTown() falls back to live /points resolution.
+  var TOWNS = [
+    { key: 'poipu',   name: "Po'ipū",  shore: 'South Shore', lat: 21.8721, lon: -159.4611, grid: 'HFO/87,170' },
+    { key: 'waimea',  name: 'Waimea',  shore: 'West Side',   lat: 21.9558, lon: -159.6683, grid: 'HFO/79,174' },
+    { key: 'lihue',   name: "Līhu'e",  shore: 'East Side',   lat: 21.9811, lon: -159.3711, grid: 'HFO/91,175' },
+    { key: 'kapaa',   name: "Kapa'a",  shore: 'East Side',   lat: 22.0752, lon: -159.3190, grid: 'HFO/93,179' },
+    { key: 'hanalei', name: 'Hanalei', shore: 'North Shore', lat: 22.2033, lon: -159.4939, grid: 'HFO/86,185' }
+  ];
+
+  var CACHE_KEY = 'wts-kauai-v1';
+  var REFRESH_MS = 15 * 60 * 1000;   // NWS caches hourly forecasts ~1h, so
+  var STALE_MS = 90 * 60 * 1000;     // most refreshes are free CDN hits.
+
+  /* ------------------------------ icons ------------------------------ */
+  /* Exactly the five variants already drawn in the mockup, parameterised
+     by size so the 50px hero and 24px rows share one definition. */
+
+  var SUN_RAYS =
+    '<line x1="14" y1="1" x2="14" y2="4"/><line x1="14" y1="24" x2="14" y2="27"/>' +
+    '<line x1="1" y1="14" x2="4" y2="14"/><line x1="24" y1="14" x2="27" y2="14"/>' +
+    '<line x1="5" y1="5" x2="7" y2="7"/><line x1="21" y1="21" x2="23" y2="23"/>' +
+    '<line x1="5" y1="23" x2="7" y2="21"/><line x1="21" y1="7" x2="23" y2="5"/>';
+
+  var CLOUD_SMALL = 'M5.5 17c-2.2 0-4-1.7-4-3.8 0-1.9 1.4-3.5 3.3-3.8.5-2.2 2.5-3.8 4.9-3.8 2.5 0 4.6 1.8 5 4.1 1.9.2 3.4 1.8 3.4 3.7 0 2-1.7 3.6-3.8 3.6H5.5z';
+  var CLOUD_RAIN  = 'M5.5 16c-2.2 0-4-1.7-4-3.8 0-1.9 1.4-3.5 3.3-3.8.5-2.2 2.5-3.8 4.9-3.8 2.5 0 4.6 1.8 5 4.1 1.9.2 3.4 1.8 3.4 3.7 0 2-1.7 3.6-3.8 3.6H5.5z';
+  var CLOUD_BIG   = 'M6 21c-2.5 0-4.5-2-4.5-4.4 0-2.2 1.6-4 3.7-4.3.6-2.6 2.9-4.5 5.7-4.5 2.9 0 5.3 2.1 5.8 4.8 2.2.3 3.8 2.1 3.8 4.3 0 2.3-1.9 4.1-4.3 4.1H6z';
+  var CLOUD_PARTLY = 'M6 22c-2.2 0-4-1.7-4-3.8 0-1.9 1.4-3.5 3.3-3.8.5-2.2 2.5-3.8 4.9-3.8 2.5 0 4.6 1.8 5 4.1 1.9.2 3.4 1.8 3.4 3.7 0 2-1.7 3.6-3.8 3.6H6z';
+
+  function svgWrap(size, inner, extraAttrs) {
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 28 28" fill="none" ' +
+      (extraAttrs || '') + ' aria-hidden="true" focusable="false">' + inner + '</svg>';
+  }
+
+  function iconSvg(cat, size, sw) {
+    switch (cat) {
+      case 'sunny':
+        return svgWrap(size,
+          '<circle cx="14" cy="14" r="6"/>' + SUN_RAYS,
+          'stroke="var(--accent-bright)" stroke-width="' + sw + '" stroke-linecap="round"');
+      case 'partly':
+        return svgWrap(size,
+          '<g stroke="var(--accent-bright)" stroke-width="' + sw + '" stroke-linecap="round">' +
+            '<circle cx="10" cy="9" r="3.2"/>' +
+            '<line x1="10" y1="2.4" x2="10" y2="4"/>' +
+            '<line x1="3.6" y1="9" x2="5.2" y2="9"/>' +
+            '<line x1="5.4" y1="4.4" x2="6.5" y2="5.5"/>' +
+          '</g>' +
+          '<path d="' + CLOUD_PARTLY + '" stroke="var(--cloud)" stroke-width="' + sw + '" fill="none"/>');
+      case 'cloudy':
+        return svgWrap(size,
+          '<path d="' + CLOUD_BIG + '" stroke="var(--cloud)" stroke-width="' + sw + '"/>');
+      case 'rain-light':
+        return svgWrap(size,
+          '<path d="' + CLOUD_SMALL + '" stroke="var(--cloud)" stroke-width="' + sw + '"/>' +
+          '<line x1="9" y1="20" x2="8" y2="23.5" stroke="var(--rain)" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+          '<line x1="15" y1="20" x2="14" y2="23.5" stroke="var(--rain)" stroke-width="' + sw + '" stroke-linecap="round"/>');
+      case 'rain-heavy':
+        return svgWrap(size,
+          '<path d="' + CLOUD_RAIN + '" stroke="var(--cloud)" stroke-width="' + sw + '"/>' +
+          '<line x1="6" y1="19" x2="5" y2="23" stroke="var(--rain-heavy)" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+          '<line x1="10.5" y1="19" x2="9.5" y2="23" stroke="var(--rain-heavy)" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+          '<line x1="15" y1="19" x2="14" y2="23" stroke="var(--rain-heavy)" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+          '<line x1="19" y1="19" x2="18" y2="23" stroke="var(--rain-heavy)" stroke-width="' + sw + '" stroke-linecap="round"/>');
+      default:
+        // Placeholder that reserves the same box while data is loading.
+        return svgWrap(size, '');
+    }
+  }
+
+  /* --------------------------- time helpers --------------------------- */
+
+  function hstParts(ms) {
+    var d = new Date(ms - HST_OFFSET_MS);
+    return { y: d.getUTCFullYear(), m: d.getUTCMonth(), d: d.getUTCDate(), h: d.getUTCHours() };
+  }
+
+  // Build a UTC timestamp for a given Hawaii wall-clock hour.
+  function hstTime(parts, hour, dayOffset) {
+    return Date.UTC(parts.y, parts.m, parts.d + (dayOffset || 0), hour) + HST_OFFSET_MS;
+  }
+
+  function parseDurationMs(s) {
+    var m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(s || '');
+    if (!m) return 0;
+    return ((+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0)) * 1000;
+  }
+
+  /* --------------------------- NWS parsing ---------------------------- */
+
+  // The raw gridpoint layers use "<ISO start>/<ISO 8601 duration>" ranges
+  // rather than one entry per hour. HFO publishes skyCover in 6- and
+  // 12-hour blocks, so expand them into something we can sample by time.
+  function buildIntervals(layer) {
+    if (!layer || !Array.isArray(layer.values)) return [];
+    var out = [];
+    for (var i = 0; i < layer.values.length; i++) {
+      var v = layer.values[i];
+      var parts = String(v.validTime || '').split('/');
+      var start = Date.parse(parts[0]);
+      if (!isFinite(start)) continue;
+      out.push({ start: start, end: start + parseDurationMs(parts[1]), value: v.value });
+    }
+    return out;
+  }
+
+  function valueAt(intervals, t) {
+    for (var i = 0; i < intervals.length; i++) {
+      if (t >= intervals[i].start && t < intervals[i].end) return intervals[i].value;
+    }
+    return null;
+  }
+
+  function averageOver(intervals, from, to) {
+    var sum = 0, n = 0;
+    for (var t = from; t < to; t += 3600000) {
+      var v = valueAt(intervals, t);
+      if (v !== null && v !== undefined) { sum += v; n++; }
+    }
+    return n ? sum / n : null;
+  }
+
+  /* ---------------------- condition categorisation --------------------- */
+
+  /* NWS shortForecast text leads; skyCover refines it by at most one step.
+     Doing it the other way round misreads Hawai'i: trade-wind cumulus keeps
+     HFO's skyCover in the 70-85% range on days that read, and feel, "mostly
+     sunny", so an sky-cover-first rule would mark the whole island cloudy
+     nearly every day. */
+  function categorize(shortForecast, skyCover, pop) {
+    var t = String(shortForecast || '').toLowerCase();
+
+    if (/(rain|shower|thunderstorm|drizzle|squall)/.test(t)) {
+      var heavy = /(likely|numerous|occasional|widespread|heavy|thunderstorm)/.test(t) ||
+                  (pop !== null && pop >= 60);
+      return heavy ? 'rain-heavy' : 'rain-light';
+    }
+
+    var cat;
+    if (/(mostly sunny|partly sunny|partly cloudy|few clouds|mostly clear)/.test(t)) cat = 'partly';
+    else if (/(mostly cloudy|overcast|cloudy)/.test(t)) cat = 'cloudy';
+    else if (/(sunny|clear|fair)/.test(t)) cat = 'sunny';
+    else cat = 'partly';
+
+    if (skyCover !== null && skyCover !== undefined) {
+      if (cat === 'partly' && skyCover >= 85) cat = 'cloudy';
+      else if (cat === 'partly' && skyCover <= 35) cat = 'sunny';
+    }
+    return cat;
+  }
+
+  function conditionLabel(cat, skyCover, pop) {
+    switch (cat) {
+      case 'sunny':      return 'Sunny';
+      case 'partly':     return (skyCover !== null && skyCover < 60) ? 'Mostly sunny' : 'Sunny intervals';
+      case 'cloudy':     return 'Cloudy breaks';
+      case 'rain-light': return (pop !== null && pop < 30) ? 'Stray showers' : 'Passing showers';
+      case 'rain-heavy': return 'Rain likely';
+      default:           return 'Checking…';
+    }
+  }
+
+  // Higher is sunnier. Blends expected sunshine against rain probability.
+  function sunScore(cat, skyCover, pop) {
+    var assumedCover = { sunny: 15, partly: 45, cloudy: 80, 'rain-light': 70, 'rain-heavy': 90 };
+    var cover = (skyCover === null || skyCover === undefined) ? assumedCover[cat] : skyCover;
+    var wet = (pop === null || pop === undefined) ? 30 : pop;
+    return (100 - cover) * 0.6 + (100 - wet) * 0.4;
+  }
+
+  /* ------------------------------ fetching ---------------------------- */
+
+  function trimPeriods(periods, horizon) {
+    var cutoff = Date.now() - 3600000, out = [];
+    for (var i = 0; i < periods.length; i++) {
+      var p = periods[i], end = Date.parse(p.endTime);
+      if (!(end > cutoff) || Date.parse(p.startTime) > horizon) continue;
+      out.push({
+        startTime: p.startTime,
+        endTime: p.endTime,
+        temperature: p.temperature,
+        shortForecast: p.shortForecast,
+        probabilityOfPrecipitation: { value: popOf(p) }
+      });
+    }
+    return out;
+  }
+
+  function trimIntervals(intervals, horizon) {
+    var cutoff = Date.now() - 3600000;
+    return intervals.filter(function (i) { return i.end > cutoff && i.start <= horizon; });
+  }
+
+  function getJSON(url) {
+    return fetch(url, { headers: { 'Accept': 'application/geo+json' } }).then(function (r) {
+      if (!r.ok) { var e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
+      return r.json();
+    });
+  }
+
+  function fetchTown(town) {
+    function load(gridPath) {
+      var base = API + '/gridpoints/' + gridPath;
+      return Promise.all([
+        getJSON(base + '/forecast/hourly'),
+        // skyCover lives only on the raw gridpoint. It is the largest of the
+        // two payloads and the least essential, so a failure here degrades to
+        // text-only categorisation rather than failing the town.
+        getJSON(base).catch(function () { return null; })
+      ]).then(function (res) {
+        var periods = (res[0] && res[0].properties && res[0].properties.periods) || [];
+        if (!periods.length) throw new Error('no periods');
+        var props = res[1] && res[1].properties;
+        // NWS returns ~7 days of hourly data; the furthest this page ever
+        // looks is tomorrow evening. Trimming to a 48h horizon keeps both
+        // memory and the localStorage cache small.
+        var horizon = Date.now() + 48 * 3600000;
+        return {
+          periods: trimPeriods(periods, horizon),
+          skyCover: trimIntervals(buildIntervals(props && props.skyCover), horizon),
+          pop: trimIntervals(buildIntervals(props && props.probabilityOfPrecipitation), horizon)
+        };
+      });
+    }
+
+    return load(town.grid).catch(function (err) {
+      // Baked-in grid is stale (NWS re-gridded) — resolve it live, once.
+      if (err && err.status !== 404) throw err;
+      return getJSON(API + '/points/' + town.lat + ',' + town.lon).then(function (pt) {
+        var p = pt.properties;
+        return load(p.gridId + '/' + p.gridX + ',' + p.gridY);
+      });
+    });
+  }
+
+  /* ----------------------------- summarising -------------------------- */
+
+  function periodsBetween(periods, from, to) {
+    var out = [];
+    for (var i = 0; i < periods.length; i++) {
+      var s = Date.parse(periods[i].startTime);
+      var e = Date.parse(periods[i].endTime);
+      if (e > from && s < to) out.push(periods[i]);
+    }
+    return out;
+  }
+
+  function popOf(period) {
+    var p = period && period.probabilityOfPrecipitation;
+    return (p && typeof p.value === 'number') ? p.value : null;
+  }
+
+  // Collapse a run of hourly periods into one headline condition. The most
+  // common shortForecast wins; ties break toward the wetter text, so we do
+  // not promise sun on the strength of one dry hour.
+  function summarize(data, from, to) {
+    var periods = periodsBetween(data.periods, from, to);
+    if (!periods.length) return null;
+
+    var counts = {}, best = null, bestN = 0;
+    var tempSum = 0, tempN = 0, popMax = null;
+
+    for (var i = 0; i < periods.length; i++) {
+      var p = periods[i];
+      var sf = p.shortForecast || '';
+      counts[sf] = (counts[sf] || 0) + 1;
+      if (counts[sf] > bestN) { bestN = counts[sf]; best = sf; }
+      if (typeof p.temperature === 'number') { tempSum += p.temperature; tempN++; }
+      var pv = popOf(p);
+      if (pv !== null && (popMax === null || pv > popMax)) popMax = pv;
+    }
+
+    var sky = averageOver(data.skyCover, from, to);
+    if (sky === null) sky = valueAt(data.skyCover, from);
+    if (popMax === null) popMax = averageOver(data.pop, from, to);
+
+    var cat = categorize(best, sky, popMax);
+    return {
+      cat: cat,
+      shortForecast: best,
+      label: conditionLabel(cat, sky, popMax),
+      temp: tempN ? Math.round(tempSum / tempN) : null,
+      pop: popMax === null ? null : Math.round(popMax),
+      sky: sky === null ? null : Math.round(sky),
+      score: sunScore(cat, sky, popMax)
+    };
+  }
+
+  /* -------------------------- window definitions ---------------------- */
+
+  // Returns {from, to, labelSuffix, descSuffix} per tab, in HST wall-clock.
+  function windowFor(tab, now) {
+    var hp = hstParts(now);
+
+    if (tab === 'now') {
+      return { from: now, to: now + 3600000, label: 'RIGHT NOW', descSuffix: '' };
+    }
+
+    if (tab === 'afternoon') {
+      var aStart = hstTime(hp, 12), aEnd = hstTime(hp, 17);
+      if (now < aEnd) {
+        return {
+          from: Math.max(now, aStart),
+          to: aEnd,
+          label: 'BEST CHANCE OF SUN · THIS AFTERNOON',
+          descSuffix: ' through 5 PM'
+        };
+      }
+      // Afternoon is over — roll to tomorrow and say so rather than
+      // showing a window that has already passed.
+      return {
+        from: hstTime(hp, 12, 1),
+        to: hstTime(hp, 17, 1),
+        label: 'BEST CHANCE OF SUN · TOMORROW AFTERNOON',
+        descSuffix: ' tomorrow afternoon'
+      };
+    }
+
+    return {
+      from: hstTime(hp, 8, 1),
+      to: hstTime(hp, 17, 1),
+      label: 'BEST CHANCE OF SUN · TOMORROW',
+      descSuffix: ' tomorrow'
+    };
+  }
+
+  function heroDesc(cat, suffix) {
+    var base = {
+      'sunny':      'Sunny and clear',
+      'partly':     'Mostly sunny with passing clouds',
+      'cloudy':     'Cloudy with a few breaks',
+      'rain-light': 'A few passing showers',
+      'rain-heavy': 'Showers on and off'
+    }[cat] || 'Conditions unclear';
+    return base + suffix + '.';
+  }
+
+  /* -------------------------------- state ----------------------------- */
+
+  var state = {
+    tab: 'afternoon',
+    towns: {},        // key -> {data, error}
+    fetchedAt: null,
+    loading: true
+  };
+
+  function readCache() {
+    try {
+      var raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || !parsed.fetchedAt) return null;
+      if (Date.now() - parsed.fetchedAt > 6 * 3600000) return null;
+      return parsed;
+    } catch (e) { return null; }
+  }
+
+  function writeCache() {
+    try {
+      var payload = { fetchedAt: state.fetchedAt, towns: {} };
+      for (var k in state.towns) {
+        if (state.towns[k] && state.towns[k].data) payload.towns[k] = state.towns[k].data;
+      }
+      localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
+    } catch (e) { /* private mode / quota — cache is a nicety, not a requirement */ }
+  }
+
+  /* ------------------------------ rendering --------------------------- */
+
+  function renderClock() {
+    var d = new Date();
+    var weekday = d.toLocaleDateString('en-US', { timeZone: 'Pacific/Honolulu', weekday: 'long' }).toUpperCase();
+    var time = d.toLocaleTimeString('en-US', { timeZone: 'Pacific/Honolulu', hour: 'numeric', minute: '2-digit' });
+    document.getElementById('now-label').textContent = weekday + ' · ' + time + ' HST';
+  }
+
+  function summariesFor(tab) {
+    var now = Date.now();
+    var win = windowFor(tab, now);
+    var out = [];
+    for (var i = 0; i < TOWNS.length; i++) {
+      var t = TOWNS[i];
+      var entry = state.towns[t.key];
+      var s = (entry && entry.data) ? summarize(entry.data, win.from, win.to) : null;
+      out.push({ town: t, summary: s, stale: !!(entry && entry.stale), failed: !!(entry && entry.error && !entry.data) });
+    }
+    return { win: win, rows: out };
+  }
+
+  function renderHero(model) {
+    var labelEl = document.getElementById('hero-label');
+    var placeEl = document.getElementById('hero-place');
+    var descEl = document.getElementById('hero-desc');
+    var noteEl = document.getElementById('hero-note');
+    var iconEl = document.getElementById('hero-icon');
+
+    var ranked = model.rows.filter(function (r) { return r.summary; })
+                           .sort(function (a, b) { return b.summary.score - a.summary.score; });
+
+    if (!ranked.length) {
+      labelEl.textContent = state.loading ? 'CHECKING THE SKY…' : 'FORECAST UNAVAILABLE';
+      placeEl.textContent = state.loading ? '…' : '—';
+      descEl.textContent = state.loading
+        ? 'Reading the latest National Weather Service forecast.'
+        : 'Could not reach the National Weather Service just now.';
+      noteEl.textContent = state.loading ? '' : 'Try again in a few minutes.';
+      iconEl.innerHTML = iconSvg('loading', 50, 1.4);
+    } else {
+      var win_ = model.win, top = ranked[0];
+      labelEl.textContent = win_.label;
+      placeEl.textContent = top.town.name;
+      descEl.textContent = heroDesc(top.summary.cat, win_.descSuffix);
+
+      var bits = [];
+      if (top.summary.temp !== null) bits.push(top.summary.temp + '°F');
+      if (top.summary.pop !== null) {
+        bits.push(top.summary.pop < 20 ? 'Low chance of rain' : top.summary.pop + '% chance of rain');
+      }
+      bits.push(top.town.shore);
+      noteEl.textContent = bits.join('  ·  ');
+      iconEl.innerHTML = iconSvg(top.summary.cat, 50, 1.4);
+    }
+
+    var tabs = document.querySelectorAll('.tab');
+    for (var i = 0; i < tabs.length; i++) {
+      var isActive = tabs[i].getAttribute('data-tab') === state.tab;
+      tabs[i].classList.toggle('active', isActive);
+      tabs[i].setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    }
+  }
+
+  function renderRows(model) {
+    var ul = document.getElementById('town-rows');
+    var html = '';
+    for (var i = 0; i < model.rows.length; i++) {
+      var r = model.rows[i], s = r.summary;
+      var cat = s ? s.cat : 'loading';
+      var cond, temp;
+
+      if (s) {
+        cond = s.label + (r.stale ? ' · last known' : '');
+        temp = (s.temp !== null) ? s.temp + '°' : '—';
+      } else if (state.loading) {
+        cond = 'Checking…'; temp = '—';
+      } else if (r.failed) {
+        cond = 'Forecast unavailable'; temp = '—';
+      } else {
+        cond = 'No forecast for this window'; temp = '—';
+      }
+
+      html += '<li class="row">' +
+        '<div class="name serif">' + r.town.name + '</div>' +
+        iconSvg(cat, 24, cat === 'partly' ? 1.4 : 1.5) +
+        '<div class="cond">' + cond + '</div>' +
+        '<div class="temp serif">' + temp + '</div>' +
+      '</li>';
+    }
+    ul.innerHTML = html;
+  }
+
+  function renderStatus() {
+    var el = document.getElementById('data-status');
+    if (state.loading && !state.fetchedAt) { el.textContent = ''; return; }
+
+    var failed = [];
+    var stale = [];
+    for (var i = 0; i < TOWNS.length; i++) {
+      var e = state.towns[TOWNS[i].key];
+      if (!e || (e.error && !e.data)) failed.push(TOWNS[i].name);
+      else if (e.stale) stale.push(TOWNS[i].name);
+    }
+
+    var parts = [];
+    if (state.fetchedAt) {
+      var mins = Math.round((Date.now() - state.fetchedAt) / 60000);
+      parts.push('Updated ' + (mins < 1 ? 'just now' : mins + ' min ago') + '.');
+    }
+    if (stale.length) parts.push('Showing the last known reading for ' + stale.join(', ') + '.');
+    if (failed.length) parts.push('No forecast available for ' + failed.join(', ') + ' right now.');
+    el.textContent = parts.join(' ');
+  }
+
+  function render() {
+    var model = summariesFor(state.tab);
+    renderHero(model);
+    renderRows(model);
+    renderStatus();
+  }
+
+  /* ------------------------------ refreshing -------------------------- */
+
+  function refresh() {
+    var cached = state.fetchedAt ? null : readCache();
+
+    return Promise.all(TOWNS.map(function (town) {
+      return fetchTown(town).then(function (data) {
+        state.towns[town.key] = { data: data, stale: false };
+      }).catch(function (err) {
+        // Per-town failure: keep whatever we already had (this session's data
+        // first, then localStorage) and mark it as last-known rather than
+        // silently dropping the row.
+        var prev = state.towns[town.key] && state.towns[town.key].data;
+        if (!prev && cached && cached.towns && cached.towns[town.key]) prev = cached.towns[town.key];
+        state.towns[town.key] = { data: prev || null, stale: !!prev, error: err };
+      });
+    })).then(function () {
+      var any = TOWNS.some(function (t) { return state.towns[t.key] && state.towns[t.key].data && !state.towns[t.key].stale; });
+      if (any) state.fetchedAt = Date.now();
+      state.loading = false;
+      writeCache();
+      render();
+    });
+  }
+
+  /* ------------------------------- wiring ----------------------------- */
+
+  var tabEls = document.querySelectorAll('.tab');
+  for (var i = 0; i < tabEls.length; i++) {
+    tabEls[i].addEventListener('click', function () {
+      state.tab = this.getAttribute('data-tab');
+      render();
+    });
+  }
+
+  var whyBtn = document.getElementById('why-btn');
+  var whyDetail = document.getElementById('why-detail');
+  whyBtn.addEventListener('click', function () {
+    var expanded = whyBtn.getAttribute('aria-expanded') === 'true';
+    whyBtn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+    whyDetail.style.display = expanded ? 'none' : 'block';
+  });
+
+  // Paint the cached forecast immediately so a returning visitor sees real
+  // numbers on first frame, then reconcile with the network.
+  (function primeFromCache() {
+    var cached = readCache();
+    if (!cached) return;
+    var age = Date.now() - cached.fetchedAt;
+    for (var k in cached.towns) {
+      state.towns[k] = { data: cached.towns[k], stale: age > STALE_MS };
+    }
+    state.fetchedAt = cached.fetchedAt;
+    state.loading = false;
+  })();
+
+  renderClock();
+  render();
+  refresh();
+
+  setInterval(renderClock, 30000);
+  setInterval(refresh, REFRESH_MS);
+  setInterval(renderStatus, 60000);
+
+  // Coming back to a backgrounded phone should not show a stale forecast.
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && (!state.fetchedAt || Date.now() - state.fetchedAt > 10 * 60000)) refresh();
+  });
+})();
+</script>
+</body>
+</html>
