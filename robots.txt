@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://jlamullins.github.io/sun-in-hawaii/sitemap.xml
