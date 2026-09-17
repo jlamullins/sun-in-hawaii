@@ -64,6 +64,12 @@ Failures are handled per town, never silently hidden:
 
 During the first load rows read `Checking…`.
 
+## Typography note
+
+Fraunces' latin-ext subset mispositions the kahako (macron), so `index.html`
+borrows only the ten macron vowels from a system serif via `@font-face` +
+`unicode-range`. Every other glyph still resolves to Fraunces.
+
 ## Local preview
 
 ```bash
