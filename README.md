@@ -3,6 +3,24 @@
 A single-page weather site that answers one question: which side of Kaua'i has
 the best shot at sun right now?
 
+## Towns
+
+Po'ipū · Waimea · Kōke'e · Līhu'e · Kapa'a · Princeville · Hanalei
+
+Some of these are meteorologically near-identical — Princeville and Hanalei sit
+in adjacent grid cells and usually differ by a fraction of a point. They are
+listed separately on purpose. Someone staying in Princeville searching "is
+there sun in Princeville?" does not necessarily know Hanalei is five minutes
+away, and the same goes for Līhu'e and Kapa'a. Recognition beats
+non-redundancy here.
+
+Kōke'e earns its row on the data instead: it sits ~1,100 m up and runs about
+13°F cooler than the coast, which is its own reason to check before driving up.
+
+Because neighbouring towns can tie, the hero ranking buckets scores by
+`TIE_MARGIN` (3 points) and breaks ties on the fixed list order, so the
+headline does not flip between Princeville and Hanalei on model noise.
+
 `index.html` is the whole site. No build step, no dependencies, no API key,
 no server. Open it in a browser and it works.
 
@@ -19,7 +37,7 @@ Per town the page makes two requests:
 | `/gridpoints/HFO/{x},{y}/forecast/hourly` | hourly temp, `shortForecast`, precip probability | ~4.5 KB |
 | `/gridpoints/HFO/{x},{y}` | `skyCover` (6h/12h blocks on HFO) | ~5.7 KB |
 
-Five towns ≈ **50 KB gzipped** for the whole island, which is what keeps this a
+Seven towns ≈ **70 KB gzipped** for the whole island, which is what keeps this a
 purely static page instead of needing a serverless proxy.
 
 Grid coordinates are baked into `TOWNS` so a normal load skips the `/points`
@@ -56,7 +74,7 @@ Failures are handled per town, never silently hidden:
 1. **Fresh data** — normal render.
 2. **Fetch fails, cached value exists** — shows the last known reading with
    `· last known` appended, and names the towns in the footer status line.
-   The cache is `localStorage`, trimmed to a 48h horizon (~49 KB).
+   The cache is `localStorage`, trimmed to a 48h horizon (~70 KB).
 3. **Fetch fails, nothing cached** — the row reads `Forecast unavailable` with
    a `—` temperature. If every town fails, the hero says so outright.
 4. **`skyCover` alone fails** — degrades to text-only categorisation; the town

@@ -162,16 +162,19 @@
   // normal page load costs 2 requests per town instead of 3. If NWS re-grids
   // and a baked URL 404s, fetchTown() falls back to live /points resolution.
   var TOWNS = [
-    { key: 'poipu',   name: "Po'ipū",  shore: 'South Shore', lat: 21.8721, lon: -159.4611, grid: 'HFO/87,170' },
-    { key: 'waimea',  name: 'Waimea',  shore: 'West Side',   lat: 21.9558, lon: -159.6683, grid: 'HFO/79,174' },
-    { key: 'lihue',   name: "Līhu'e",  shore: 'East Side',   lat: 21.9811, lon: -159.3711, grid: 'HFO/91,175' },
-    { key: 'kapaa',   name: "Kapa'a",  shore: 'East Side',   lat: 22.0752, lon: -159.3190, grid: 'HFO/93,179' },
-    { key: 'hanalei', name: 'Hanalei', shore: 'North Shore', lat: 22.2033, lon: -159.4939, grid: 'HFO/86,185' }
+    { key: 'poipu',   name: "Po'ipū",      shore: 'South Shore', lat: 21.8721, lon: -159.4611, grid: 'HFO/87,170' },
+    { key: 'waimea',  name: 'Waimea',      shore: 'West Side',   lat: 21.9558, lon: -159.6683, grid: 'HFO/79,174' },
+    { key: 'kokee',   name: "Kōke'e",      shore: 'Upland',      lat: 22.1283, lon: -159.6606, grid: 'HFO/79,182' },
+    { key: 'lihue',   name: "Līhu'e",      shore: 'East Side',   lat: 21.9811, lon: -159.3711, grid: 'HFO/91,175' },
+    { key: 'kapaa',   name: "Kapa'a",      shore: 'East Side',   lat: 22.0752, lon: -159.3190, grid: 'HFO/93,179' },
+    { key: 'princeville', name: 'Princeville', shore: 'North Shore', lat: 22.2242, lon: -159.4839, grid: 'HFO/86,186' },
+    { key: 'hanalei', name: 'Hanalei',     shore: 'North Shore', lat: 22.2033, lon: -159.4939, grid: 'HFO/86,185' }
   ];
 
   var CACHE_KEY = 'wts-kauai-v1';
   var REFRESH_MS = 15 * 60 * 1000;   // NWS caches hourly forecasts ~1h, so
   var STALE_MS = 90 * 60 * 1000;     // most refreshes are free CDN hits.
+  var TIE_MARGIN = 3;                // sun-score points; see renderHero().
 
   /* ------------------------------ icons ------------------------------ */
   /* Exactly the five variants already drawn in the mockup, parameterised
@@ -543,7 +546,7 @@
       var t = TOWNS[i];
       var entry = state.towns[t.key];
       var s = (entry && entry.data) ? summarize(entry.data, win.from, win.to) : null;
-      out.push({ town: t, summary: s, stale: !!(entry && entry.stale), failed: !!(entry && entry.error && !entry.data) });
+      out.push({ town: t, index: i, summary: s, stale: !!(entry && entry.stale), failed: !!(entry && entry.error && !entry.data) });
     }
     return { win: win, rows: out };
   }
@@ -555,8 +558,17 @@
     var noteEl = document.getElementById('hero-note');
     var iconEl = document.getElementById('hero-icon');
 
+    // Neighbouring towns can sit a tenth of a point apart — Princeville and
+    // Hanalei are five minutes' drive from each other. Ranking on the raw
+    // score would flip the headline between them on noise, so scores are
+    // bucketed and near-ties fall back to the fixed list order.
     var ranked = model.rows.filter(function (r) { return r.summary; })
-                           .sort(function (a, b) { return b.summary.score - a.summary.score; });
+                           .sort(function (a, b) {
+                             var ba = Math.round(a.summary.score / TIE_MARGIN);
+                             var bb = Math.round(b.summary.score / TIE_MARGIN);
+                             if (ba !== bb) return bb - ba;
+                             return a.index - b.index;
+                           });
 
     if (!ranked.length) {
       labelEl.textContent = state.loading ? 'CHECKING THE SKY…' : 'FORECAST UNAVAILABLE';
