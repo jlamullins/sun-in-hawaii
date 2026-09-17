@@ -16,6 +16,28 @@ non-redundancy here.
 
 Kōke'e earns its row on the data instead: it sits ~1,100 m up and runs about
 13°F cooler than the coast, which is its own reason to check before driving up.
+It carries `coastal: false`, which keeps it in the comparison but out of the
+headline — "head to Kōke'e for sun" is a bad answer for someone picking a beach
+for the afternoon. It can still take the hero if no coastal town has data.
+
+## Nighttime
+
+After sunset, "best chance of sun right now" is meaningless, so the Now tab
+points at the next usable daylight and relabels itself — `NEXT SUN · TOMORROW
+MORNING` in the evening, `NEXT SUN · THIS MORNING` before dawn. Same pattern as
+the afternoon tab rolling over at 5 PM.
+
+Sunrise and sunset are computed locally with the full NOAA solar algorithm
+(the simplified "sunrise equation" runs ~2 min fast at this latitude).
+Validated against sunrise-sunset.org across solstices and equinoxes: within
+1-2 minutes year round. No extra request, and it works when NWS is down.
+
+## SEO / crawlers
+
+The town rows ship as static HTML and are replaced by `render()` once the NWS
+fetch resolves. Without that, a crawler sees an empty list — the forecast is
+entirely JS-rendered. **Keep the static list in `index.html` in sync with the
+`TOWNS` array.**
 
 Because neighbouring towns can tie, the hero ranking buckets scores by
 `TIE_MARGIN` (3 points) and breaks ties on the fixed list order, so the

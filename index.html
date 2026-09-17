@@ -111,7 +111,7 @@
   </svg>
 
   <div class="tracked date-row" id="now-label">&nbsp;</div>
-  <div class="tracked" id="sun-times"></div>
+  <div class="tracked" id="sun-times">KAUA'I SUNRISE &amp; SUNSET</div>
 
   <main>
     <section class="hero" aria-label="Current best chance of sun">
@@ -131,8 +131,55 @@
     </div>
 
     <section aria-labelledby="elsewhere-heading">
-      <h3 id="elsewhere-heading" class="serif">Elsewhere on Kaua'i</h3>
-      <ul class="rows" id="town-rows"></ul>
+      <h3 id="elsewhere-heading" class="serif">Around the island</h3>
+      <!-- Rendered server-side-ish: these rows ship in the HTML so crawlers and
+           first paint both get the town names. render() replaces them with live
+           values as soon as the NWS fetch resolves. Keep this list in sync with
+           the TOWNS array below. -->
+      <ul class="rows" id="town-rows">
+        <li class="row">
+          <div class="name serif">Po'ipū</div>
+          <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true" focusable="false"></svg>
+          <div class="cond">Checking…</div>
+          <div class="temp serif">—</div>
+        </li>
+        <li class="row">
+          <div class="name serif">Waimea</div>
+          <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true" focusable="false"></svg>
+          <div class="cond">Checking…</div>
+          <div class="temp serif">—</div>
+        </li>
+        <li class="row">
+          <div class="name serif">Kōke'e</div>
+          <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true" focusable="false"></svg>
+          <div class="cond">Checking…</div>
+          <div class="temp serif">—</div>
+        </li>
+        <li class="row">
+          <div class="name serif">Līhu'e</div>
+          <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true" focusable="false"></svg>
+          <div class="cond">Checking…</div>
+          <div class="temp serif">—</div>
+        </li>
+        <li class="row">
+          <div class="name serif">Kapa'a</div>
+          <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true" focusable="false"></svg>
+          <div class="cond">Checking…</div>
+          <div class="temp serif">—</div>
+        </li>
+        <li class="row">
+          <div class="name serif">Princeville</div>
+          <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true" focusable="false"></svg>
+          <div class="cond">Checking…</div>
+          <div class="temp serif">—</div>
+        </li>
+        <li class="row">
+          <div class="name serif">Hanalei</div>
+          <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true" focusable="false"></svg>
+          <div class="cond">Checking…</div>
+          <div class="temp serif">—</div>
+        </li>
+      </ul>
     </section>
   </main>
 
@@ -174,7 +221,10 @@
   var TOWNS = [
     { key: 'poipu',   name: "Po'ipū",      shore: 'South Shore', lat: 21.8721, lon: -159.4611, grid: 'HFO/87,170' },
     { key: 'waimea',  name: 'Waimea',      shore: 'West Side',   lat: 21.9558, lon: -159.6683, grid: 'HFO/79,174' },
-    { key: 'kokee',   name: "Kōke'e",      shore: 'Upland',      lat: 22.1283, lon: -159.6606, grid: 'HFO/79,182' },
+    // coastal:false keeps a town in the comparison but out of the headline.
+    // Kōke'e is 1,100 m up a canyon road; "head to Kōke'e for sun" is a bad
+    // answer for someone picking a beach for the afternoon.
+    { key: 'kokee',   name: "Kōke'e",      shore: 'Upland',      lat: 22.1283, lon: -159.6606, grid: 'HFO/79,182', coastal: false },
     { key: 'lihue',   name: "Līhu'e",      shore: 'East Side',   lat: 21.9811, lon: -159.3711, grid: 'HFO/91,175' },
     { key: 'kapaa',   name: "Kapa'a",      shore: 'East Side',   lat: 22.0752, lon: -159.3190, grid: 'HFO/93,179' },
     { key: 'princeville', name: 'Princeville', shore: 'North Shore', lat: 22.2242, lon: -159.4839, grid: 'HFO/86,186' },
@@ -185,6 +235,7 @@
   var REFRESH_MS = 15 * 60 * 1000;   // NWS caches hourly forecasts ~1h, so
   var STALE_MS = 90 * 60 * 1000;     // most refreshes are free CDN hits.
   var TIE_MARGIN = 3;                // sun-score points; see renderHero().
+  var ISLAND = [21.9811, -159.3711]; // Lihu'e — island-wide sun reference.
 
   /* ------------------------------ icons ------------------------------ */
   /* Exactly the five variants already drawn in the mockup, parameterised
@@ -510,6 +561,23 @@
     var hp = hstParts(now);
 
     if (tab === 'now') {
+      // After sunset "the best chance of sun right now" is meaningless, and
+      // before dawn it is premature. In both cases point at the next usable
+      // daylight and relabel, the same way the afternoon tab rolls over.
+      var sun = sunTimes(hstDayStartUtc(now, 0), ISLAND[0], ISLAND[1]);
+      if (sun && now < sun.sunrise) {
+        return {
+          from: sun.sunrise, to: hstTime(hp, 12),
+          label: 'NEXT SUN · THIS MORNING', descSuffix: ' once the sun is up'
+        };
+      }
+      if (sun && now > sun.sunset) {
+        var tsun = sunTimes(hstDayStartUtc(now, 1), ISLAND[0], ISLAND[1]);
+        return {
+          from: tsun ? tsun.sunrise : hstTime(hp, 8, 1), to: hstTime(hp, 12, 1),
+          label: 'NEXT SUN · TOMORROW MORNING', descSuffix: ' tomorrow morning'
+        };
+      }
       return { from: now, to: now + 3600000, label: 'RIGHT NOW', descSuffix: '' };
     }
 
@@ -597,7 +665,7 @@
   function renderSunTimes() {
     var el = document.getElementById('sun-times');
     var dayOffset = state.tab === 'tomorrow' ? 1 : 0;
-    var t = sunTimes(hstDayStartUtc(Date.now(), dayOffset), 21.9811, -159.3711);
+    var t = sunTimes(hstDayStartUtc(Date.now(), dayOffset), ISLAND[0], ISLAND[1]);
     if (!t) { el.textContent = ''; return; }
     var f = function (ms) {
       return new Date(ms).toLocaleTimeString('en-US', {
@@ -632,8 +700,11 @@
     // Hanalei are five minutes' drive from each other. Ranking on the raw
     // score would flip the headline between them on noise, so scores are
     // bucketed and near-ties fall back to the fixed list order.
-    var ranked = model.rows.filter(function (r) { return r.summary; })
-                           .sort(function (a, b) {
+    var candidates = model.rows.filter(function (r) { return r.summary && r.town.coastal !== false; });
+    // Only fall back to inland towns if no coastal one has data at all.
+    if (!candidates.length) candidates = model.rows.filter(function (r) { return r.summary; });
+
+    var ranked = candidates.sort(function (a, b) {
                              var ba = Math.round(a.summary.score / TIE_MARGIN);
                              var bb = Math.round(b.summary.score / TIE_MARGIN);
                              if (ba !== bb) return bb - ba;
